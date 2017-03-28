@@ -26,12 +26,12 @@ def dispTopics(pt, voca, pz):
         wvs = zip(range(len(vs)), vs)
         wvs = sorted(wvs, key=lambda d:d[1], reverse=True)
         #tmps = ' '.join(['%s' % voca[w] for w,v in wvs[:10]])
-        tmps = ' '.join(['%s:%f' % (voca[w],v) for w,v in wvs[:15]])
+        tmps = ' '.join(['%s:%f' % (voca[w],v) for w,v in wvs[:10]])
         topics.append((pz[k], tmps))
         k += 1
         
     print 'p(z)\t\tTop words'
-    for pz, s in sorted(topics, reverse=True):
+    for pz, s in topics:
         print '%f\t%s' % (pz, s)
 
 if __name__ == '__main__':

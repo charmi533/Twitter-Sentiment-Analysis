@@ -1,26 +1,28 @@
 #!/bin/bash
 # run an toy example for BTM
 
-K=20   # number of topics
+K=10  # number of topics
 
-alpha=`echo "scale=3;50/$K"|bc`
-beta=0.005
-niter=5
+alpha=`echo "scale=0.1;1/$K"|bc`
+beta=0.01
+niter=35
 save_step=501
 
-input_dir=../sample-data/
+input_dir=../input_data/
 output_dir=../output/
 model_dir=${output_dir}model/
 mkdir -p $output_dir/model 
 
 # the input docs for training
-doc_pt=${input_dir}doc_info.txt
+doc_pt=${input_dir}tweet_text.csv
 
 echo "=============== Index Docs ============="
 # docs after indexing
 dwid_pt=${output_dir}doc_wids.txt
+
 # vocabulary file
 voca_pt=${output_dir}voca.txt
+
 python indexDocs.py $doc_pt $dwid_pt $voca_pt
 
 ## learning parameters p(z) and p(w|z)
