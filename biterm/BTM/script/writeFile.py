@@ -57,16 +57,41 @@ def clean_tweet(tweet, slang_dict):
     tweet = re.sub(r'pic.twitter\S+', '', tweet)
     
     #remove hashtags and mentions
-    tweet = re.sub(r'#\S+', '', tweet)
+    #tweet = re.sub(r'#\S+', '', tweet)
     tweet = re.sub(r'@\S+', '', tweet)
-
+    
+    #Remove stop-words and punctuation
     stopset = stopwords.words('english') + list(string.punctuation)
+    stopset.extend(['#demonetisation', '#demonetization'])
     tokeniser = TweetTokenizer()
     tweet_tokens = tokeniser.tokenize(tweet.lower())
     tokens = [i for i in tweet_tokens if i not in stopset and len(i) > 2]
-    tweet = ' '.join(tokens)
-    print tweet
 
+     
+    #Stemming
+    #porter_stemmer = PorterStemmer()
+    #tokens = [porter_stemmer.stem(token) for token in tokens]
+    
+    #Lemmanisation
+    wordnet_lemmatizer = WordNetLemmatizer()
+    tokens = [wordnet_lemmatizer.lemmatize(token) for token in tokens]
+    
+    #Slang lookup
+    tweet_tokens = []
+    
+    for i in range(len(tokens)):
+        if tokens[i] in slang_dict:
+            abbrev = slang_dict[tokens[i]].split()
+            abbrev = [j for j in abbrev if j not in stopset and len(j)>2]
+            tweet_tokens.extend(abbrev)
+        else:
+            tweet_tokens.append(tokens[i])
+    del tokens
+
+    
+    
+    tweet = ' '.join(tweet_tokens)
+    
     return tweet
 
 if __name__ == '__main__':
@@ -84,20 +109,21 @@ if __name__ == '__main__':
     indexes = []
     for i in range(len(text_clean)):
         tokens = text_clean[i].split()
-        
 
         for x in tokens:
-            if x.isdigit():
+            if re.search('[a-zA-Z]', x) == None or len(str(x)) < 3:
                 text_clean[i] = text_clean[i].replace(x, '')
-        text_clean[i] = str(text_clean[i]).strip()
+        del tokens
+        tokens = text_clean[i].split()
         if len(tokens) < 3:
             indexes.append(i)
-        if re.search(r'[A-Za-z]', text_clean[i]) == None:
-            indexes.append(i)
+            
+        text_clean[i] = str(text_clean[i]).strip()
         text_clean[i] = re.sub(r'\s+', ' ', text_clean[i])
-        
+        del tokens
     text_clean.drop(indexes, inplace=True)
     del indexes
 
     tweets['text'] = text_clean
+    tweets = tweets[pd.notnull(tweets['text'])]
     tweets['text'].to_csv('{0}/tweet_text.csv'.format(input_dir), sep='\t', index=False, header=False)

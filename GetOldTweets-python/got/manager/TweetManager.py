@@ -1,4 +1,4 @@
-import urllib,urllib2,json,re,datetime,sys,cookielib
+import urllib,urllib2,json,re,datetime,sys,cookielib, os
 from .. import models
 from pyquery import PyQuery
 from bs4 import BeautifulSoup
@@ -9,6 +9,8 @@ import time
 from retrying import retry
 import cyberoam_login
 import re
+import codecs
+import pickle
 
 	
 def visible(element):
@@ -26,25 +28,34 @@ class TweetManager:
 
 		
 	@staticmethod
-	def getTweets(tweetCriteria, receiveBuffer = None, bufferLength = 100):
-		refreshCursor = ''
+	def getTweets(tweetCriteria, receiveBuffer = None, bufferLength = 100, refreshCursor = '', cachefile = None):
+		
 	
 		results = []
 		resultsAux = []
 		cookieJar = cookielib.CookieJar()
+
+		"""if os.path.exists(cachefile+'.results'):
+			results_file = codecs.open(cachefile+'.results', 'rb')
+			while True:
+				try:
+					resultsAux.append(pickle.load(results_file))
+				except EOFError:
+					break"""
 		
 		if hasattr(tweetCriteria, 'username') and (tweetCriteria.username.startswith("\'") or tweetCriteria.username.startswith("\"")) and (tweetCriteria.username.endswith("\'") or tweetCriteria.username.endswith("\"")):
 			tweetCriteria.username = tweetCriteria.username[1:-1]
 
 		active = True
-
+		#results_file = codecs.open(cachefile+'.results', 'a')
 		while active:
 
 			json = TweetManager.getJsonReponse(tweetCriteria, refreshCursor, cookieJar)
 			if len(json['items_html'].strip()) == 0:
 				break
 
-			refreshCursor = json['min_position']			
+			refreshCursor = json['min_position']
+					
 			tweets = PyQuery(json['items_html'])('div.js-stream-tweet')
 			
 			if len(tweets) == 0:
@@ -54,7 +65,7 @@ class TweetManager:
 				tweetPQ = PyQuery(tweetHTML)
 				tweet = models.Tweet()
 
-				usernameTweet = tweetPQ("span.username.js-action-profile-name b").text();
+				usernameTweet = tweetPQ.attr('data-screen-name')
 
 				
 				soup = BeautifulSoup(tweetPQ("p.tweet-text").html(), "lxml")
@@ -86,19 +97,31 @@ class TweetManager:
 				
 				results.append(tweet)
 				resultsAux.append(tweet)
+				#pickle.dump(tweet, results_file, pickle.HIGHEST_PROTOCOL)
 				
 				if receiveBuffer and len(resultsAux) >= bufferLength:
 					receiveBuffer(resultsAux)
 					resultsAux = []
+					#os.remove(cachefile+'.results')
+
 				
 				if tweetCriteria.maxTweets > 0 and len(results) >= tweetCriteria.maxTweets:
 					active = False
 					break
-			sleep(randint(10,30))
+
+				
+			"""resume_file = codecs.open(cachefile, "w+", "utf-8")
+			resume_file.write("%s\n" % refreshCursor)
+			resume_file.close()"""
+			#sleep(randint(10,30))
 					
 		
 		if receiveBuffer and len(resultsAux) > 0:
 			receiveBuffer(resultsAux)
+			"""if os.path.exists(cachefile+'.results'):
+				os.remove(cachefile+'.results',)
+			if os.path.exists(cachefile):
+				os.remove(cachefile)"""
 		
 		return results
 
@@ -139,8 +162,31 @@ class TweetManager:
 		opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookieJar))
 		opener.addheaders = headers
 
+		retries = 4
 		count = 0
-		try:
+		for x in range(retries):
+			try:
+				response = opener.open(url)
+				jsonResponse = response.read()
+				break
+			except urllib2.URLError, e:
+				print (e)
+				errorno = re.findall(r'\d+', str(e.reason))[0]
+				if errorno == '104':
+					if count == 1:
+						cyberoam_login.login()
+						count = 0
+					else:
+						count = count + 1
+				else:
+					sleep(randint(10, 20))
+
+				if x == retries - 1:
+					print "Twitter weird response. Try to see on browser: https://twitter.com/search?q=%s&src=typd" % urllib.quote(urlGetData)
+					sys.exit()
+					return
+		
+		"""try:
 			response = opener.open(url)
 			jsonResponse = response.read()
 		except urllib2.URLError, e:
@@ -165,7 +211,7 @@ class TweetManager:
 				else:
 					print "Twitter weird response. Try to see on browser: https://twitter.com/search?q=%s&src=typd" % urllib.quote(urlGetData)
 					sys.exit()
-					return
+					return"""
 		
 		dataJson = json.loads(jsonResponse)
 		

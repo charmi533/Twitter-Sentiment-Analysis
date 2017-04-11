@@ -77,14 +77,21 @@ def main(argv):
         outputFile.write(('\n"%s"\t"%s"\t%d\t%d\t"%s"\t"%s"\t"%s"\t"%s"\t"%s"\t"%s"' % (t.username, t.date.strftime("%Y-%m-%d %H:%M"), t.retweets, t.favorites, t.text, t.geo, t.mentions, t.hashtags, t.id, t.permalink)))
       outputFile.flush();
       print 'More %d saved on file...\n' % len(tweets)
-    
-    got.manager.TweetManager.getTweets(tweetCriteria, receiveBuffer)
+
+    cachefile_path = '/home/charmi533/Desktop/Btp/code/GetOldTweets-python/'+filename+'.cache'
+    got.manager.TweetManager.getTweets(tweetCriteria, receiveBuffer, cachefile=cachefile_path)
+    """if not os.path.exists(cachefile_path):
+      got.manager.TweetManager.getTweets(tweetCriteria, receiveBuffer, cachefile=cachefile_path)
+    else:
+      cachefile = codecs.open(cachefile_path, 'r')
+      refreshCursor = cachefile.read()
+      got.manager.TweetManager.getTweets(tweetCriteria, receiveBuffer, refreshCursor=refreshCursor, cachefile=cachefile_path)"""
     
   except arg:
     print 'Arguments parser error, try -h' + arg
   finally:
     outputFile.close()
-    print 'Done. Output file generated "output_got.csv".'
+    print 'Done. Output file generated "%s".'%filename
 
 if __name__ == '__main__':
   if len(sys.argv) > 1:
